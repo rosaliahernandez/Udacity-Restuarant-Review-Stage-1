@@ -22,36 +22,45 @@ const cacheFiles = [
     '/img/10.jpg'
 ];
 
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js').then(function(registration) {
+        // Registration was successful
+        
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      }, function(err) {
+        // registration failed :(
+        console.log('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
+
 self.addEventListener('install', function(e) {
-    e.waitUntil(
-        caches.open(cacheName).then(function(cache) {
-            return cache.addAll(cacheFiles);
+  e.waitUntil(
+      caches.open(cacheName)
+        .then(function(cache) {
+          console.log('Opened cache');
+          return cache.addAll(cacheFiles);
         })
     );
-});
+  });
+
+
 
 self.addEventListener('fetch', function(e) {
 
-    e.respondWith(
-        caches.match(e.request).then(function(response) {
-
-            if (response) {
-                return response;
-            }
-
-            else {
-                return fetch(e.request)
-                    .then(function(response) {
-                        const responseClone = response.clone();
-                        caches.open(cacheName).then(function(cache) {
-                            cache.put(e.request, responseClone);
-                        })
-                        return response;
-                    })
-                    .catch(function(err) {
-                        console.error(err);
-                    });
-            }         
-        })
-    );
+   self.addEventListener('fetch', function(e) {
+  e.respondWith(
+    caches.match(e.request).then(function(response) {
+      return response || fetch(e.request).then(function(response) {
+        return caches.open(staticCacheName).then(function(cache) {
+          cache.put(e.request, response.clone());
+          return response;
+          });
+      });
+    })
+    .catch(function(err) {
+     console.log(err);
+    })
+  );
 });
