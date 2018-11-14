@@ -1,5 +1,5 @@
-const cacheName = 'v1';
-const cacheFiles = [
+const CACHE_NAME = 'restaurant-v1';
+const urlsToCache = [
     '/',
     '/index.html',
     '/restaurant.html',
@@ -22,33 +22,63 @@ const cacheFiles = [
     '/img/10.jpg'
 ];
 
-
-self.addEventListener('install', function(e) {
-  e.waitUntil(
-      caches.open(cacheName)
+// cache files
+self.addEventListener('install', function(event) {
+  event.waitUntil(
+      caches.open(CACHE_NAME)
         .then(function(cache) {
           console.log('Opened cache');
-          return cache.addAll(cacheFiles);
+          return cache.addAll(urlsToCache);
         })
     );
   });
 
 
+//fetches cache when going offline. 
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request)
+      .then(function(response) {
+        if (response) {
+          return response;    
+        }
+          
+        var fetchRequest = event.request.clone();
 
-self.addEventListener('fetch', function(e) {
+        return fetch(fetchRequest).then(
+          function(response) {
+            if(!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
 
-   self.addEventListener('fetch', function(e) {
-  e.respondWith(
-    caches.match(e.request).then(function(response) {
-      return response || fetch(e.request).then(function(response) {
-        return caches.open(staticCacheName).then(function(cache) {
-          cache.put(e.request, response.clone());
-          return response;
-          });
-      });
-    })
-    .catch(function(err) {
-     console.log(err);
+            var responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then(function(cache) {
+                cache.put(event.request, responseToCache);
+              });
+
+            return response;
+          }
+        );
+      })
+    );
+});
+
+//Update
+self.addEventListener('activate', function(event) {
+
+  var cacheWhitelist = ['restaurant-v1'];
+
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });
